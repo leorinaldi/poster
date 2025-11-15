@@ -50,4 +50,13 @@ model User {
   @@map("users")
 }
 
-// Add your application models below
+// Application models
+model Tool {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("tools")
+}

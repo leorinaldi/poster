@@ -2,13 +2,20 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { prisma } from "@/lib/prisma"
+import ToolsInterface from "./tools-interface"
 
-export default async function HomePage() {
+export default async function ToolsPage() {
   const session = await auth()
 
   if (!session) {
     redirect("/login")
   }
+
+  // Fetch all tools from database
+  const tools = await prisma.tool.findMany({
+    orderBy: { name: 'asc' }
+  })
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -57,19 +64,9 @@ export default async function HomePage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            Welcome to Poster!
-          </h2>
-          <Link
-            href="/tools"
-            className="inline-block mt-6 px-6 py-3 text-lg font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-          >
-            Next
-          </Link>
-        </div>
+      {/* Main Content with Sidebar */}
+      <div className="flex-1 overflow-hidden">
+        <ToolsInterface tools={tools} />
       </div>
     </div>
   )
