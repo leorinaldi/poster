@@ -5,11 +5,11 @@ const prisma = new PrismaClient()
 async function main() {
   // Create default tool
   const tool = await prisma.tool.upsert({
-    where: { name: 'Video clip finder' },
+    where: { name: 'Text summarizer' },
     update: {},
     create: {
-      name: 'Video clip finder',
-      description: 'Find and extract video clips',
+      name: 'Text summarizer',
+      description: 'Summarize text content',
     },
   })
 
