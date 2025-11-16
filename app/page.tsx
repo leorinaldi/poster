@@ -70,7 +70,7 @@ export default async function HomePage() {
             Welcome to Poster!
           </h2>
           <Link
-            href={projectCount === 0 ? "/projects/new" : "/tools"}
+            href={projectCount === 0 ? "/projects/new" : "/tools/text-summarizer"}
             className="inline-block mt-6 px-6 py-3 text-lg font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
             Next

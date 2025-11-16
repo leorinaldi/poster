@@ -76,14 +76,26 @@ Poster is a web application that allows users to organize and generate AI-powere
 - Delete generations with confirmation
 
 ### User Interface
-- Left sidebar with project and tool navigation
-- Tool-specific content lists (summaries, image generations, character generations)
-- "+ New" button to start fresh generations
-- Inline project creation
-- Responsive form validation
-- Hover-to-delete functionality with confirmation modals
-- Real-time updates
-- Visual preview of reference images and generated content
+- **Top Header Bar**:
+  - "Poster" branding
+  - User profile image, name, and email
+  - Account Settings button
+  - Sign Out button
+- **Left Sidebar**:
+  - Projects dropdown with create and manage options
+  - Tools dropdown for navigation between tools
+  - Tool-specific content lists (summaries, image generations, character generations)
+  - "+ New" button to start fresh generations
+- **Main Content Area**:
+  - Tool forms with validation
+  - Generated content display
+  - Real-time updates
+  - Visual preview of reference images and generated content
+- **Additional Features**:
+  - Inline project creation
+  - Hover-to-delete functionality with confirmation modals
+  - Context-based sidebar content updates per tool
+  - Responsive layout with server/client component architecture
 
 ## Database Schema
 
@@ -226,10 +238,19 @@ poster/
 │   │   ├── image-generations/         # Image generation CRUD
 │   │   ├── character-consistent-generations/ # Character imaging CRUD
 │   │   └── leonardo-models/           # Model configuration API
-│   ├── components/                    # React components
-│   │   └── manage-projects.tsx
-│   ├── tools/                         # Tools interface
-│   │   └── tools-interface.tsx
+│   ├── components/                    # Shared React components
+│   │   ├── manage-projects.tsx        # Project management UI
+│   │   └── DeleteConfirmModal.tsx     # Reusable delete confirmation
+│   ├── tools/                         # Tools section
+│   │   ├── layout.tsx                 # Server component layout (fetches session)
+│   │   ├── ToolsLayoutClient.tsx      # Client component with UI logic
+│   │   ├── ProjectContext.tsx         # Project and sidebar state context
+│   │   ├── text-summarizer/
+│   │   │   └── page.tsx               # Text summarizer tool
+│   │   ├── text-to-image/
+│   │   │   └── page.tsx               # Text to image tool
+│   │   └── character-consistent-image/
+│   │       └── page.tsx               # Character consistent tool
 │   └── page.tsx                       # Home page
 ├── lib/
 │   └── prisma.ts                      # Prisma client
@@ -239,6 +260,41 @@ poster/
 │   └── seed.ts                        # Database seeding
 └── auth.ts                            # NextAuth configuration
 ```
+
+## Architecture
+
+### Component Structure
+The application uses Next.js 16's App Router with a clear separation between server and client components:
+
+- **Server Components** (`app/tools/layout.tsx`):
+  - Fetches user session using `auth()` from NextAuth.js
+  - Passes session data to client components as props
+  - No client-side state or hooks
+
+- **Client Components** (`app/tools/ToolsLayoutClient.tsx`):
+  - Handles all UI logic and interactivity
+  - Manages project selection and tool navigation
+  - Renders header, sidebar, and main content areas
+  - Receives session data from server component
+
+### State Management
+- **ProjectContext** (`app/tools/ProjectContext.tsx`):
+  - React Context for global project state
+  - Manages selected project across all tools
+  - Provides `setSidebarContent` for dynamic sidebar updates
+  - Each tool page sets its own sidebar content via `useEffect`
+
+### Tool Pages
+Each tool is a separate route with its own page component:
+- `text-summarizer/page.tsx` - Text summarization tool
+- `text-to-image/page.tsx` - Image generation tool
+- `character-consistent-image/page.tsx` - Character-consistent imaging tool
+
+Tool pages:
+- Use `useProject()` hook to access project context
+- Set sidebar content dynamically via `setSidebarContent()`
+- Render only the main content area (forms and results)
+- Clear sidebar content on unmount
 
 ## Key Features in Detail
 
