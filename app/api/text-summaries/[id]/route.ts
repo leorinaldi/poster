@@ -3,10 +3,13 @@ import { prisma } from "@/lib/prisma"
 import { NextResponse } from "next/server"
 import OpenAI from "openai"
 
-const openai = new OpenAI({
-  apiKey: process.env.XAI_API_KEY,
-  baseURL: "https://api.x.ai/v1",
-})
+// Lazy instantiation to avoid build-time errors
+function getOpenAI() {
+  return new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+  })
+}
 
 export async function PUT(
   req: Request,
@@ -57,6 +60,7 @@ export async function PUT(
       namePrompt += textToSummarize?.slice(0, 200) || ""
     }
 
+    const openai = getOpenAI()
     const nameResponse = await openai.chat.completions.create({
       model: "grok-4-fast-non-reasoning",
       messages: [
