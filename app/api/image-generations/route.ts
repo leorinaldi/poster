@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
     // Create GeneratedImage records for each image URL
     const generatedImages = await Promise.all(
-      imageResponse.data.map((image) =>
+      imageResponse.data.map((image: any) =>
         prisma.generatedImage.create({
           data: {
             imageGenerationRequestId: imageGenerationRequest.id,
