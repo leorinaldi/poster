@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache"
 export default async function NewProjectPage() {
   const session = await auth()
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/login")
   }
 

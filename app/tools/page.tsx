@@ -8,7 +8,7 @@ import ToolsInterface from "./tools-interface"
 export default async function ToolsPage() {
   const session = await auth()
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/login")
   }
 
