@@ -39,29 +39,33 @@ model Session {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String?
-  email         String?        @unique
-  emailVerified DateTime?      @map("email_verified")
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
-  projects      Project[]
-  textSummaries TextSummary[]
+  id                                String                              @id @default(cuid())
+  name                              String?
+  email                             String?                             @unique
+  emailVerified                     DateTime?                           @map("email_verified")
+  image                             String?
+  accounts                          Account[]
+  sessions                          Session[]
+  projects                          Project[]
+  textSummaries                     TextSummary[]
+  imageGenerationRequests           ImageGenerationRequest[]
+  characterConsistentImageRequests  CharacterConsistentImageRequest[]
 
   @@map("users")
 }
 
 // Application models
 model Project {
-  id            Int           @id @default(autoincrement())
-  name          String
-  description   String?       @db.Text
-  userId        String        @map("user_id")
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  textSummaries TextSummary[]
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id                               Int                               @id @default(autoincrement())
+  name                             String
+  description                      String?                           @db.Text
+  userId                           String                            @map("user_id")
+  user                             User                              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  textSummaries                    TextSummary[]
+  imageGenerationRequests          ImageGenerationRequest[]
+  characterConsistentImageRequests CharacterConsistentImageRequest[]
+  createdAt                        DateTime                          @default(now()) @map("created_at")
+  updatedAt                        DateTime                          @updatedAt @map("updated_at")
 
   @@map("projects")
 }
@@ -92,4 +96,88 @@ model TextSummary {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("text_summaries")
+}
+
+model ImageGenerationRequest {
+  id             Int              @id @default(autoincrement())
+  projectId      Int              @map("project_id")
+  userId         String           @map("user_id")
+  name           String?          @db.VarChar(50)
+  prompt         String           @db.Text
+  numberOfImages Int              @map("number_of_images")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  generatedImages GeneratedImage[]
+
+  @@map("image_generation_requests")
+}
+
+model GeneratedImage {
+  id                       Int                    @id @default(autoincrement())
+  imageGenerationRequestId Int                    @map("image_generation_request_id")
+  imageUrl                 String                 @db.Text
+  createdAt                DateTime               @default(now()) @map("created_at")
+  updatedAt                DateTime               @updatedAt @map("updated_at")
+
+  imageGenerationRequest ImageGenerationRequest @relation(fields: [imageGenerationRequestId], references: [id], onDelete: Cascade)
+
+  @@map("generated_images")
+}
+
+model CharacterConsistentImageRequest {
+  id                  Int                                @id @default(autoincrement())
+  projectId           Int                                @map("project_id")
+  userId              String                             @map("user_id")
+  name                String?                            @db.VarChar(50)
+  prompt              String                             @db.Text
+  referenceImageUrl   String                             @map("reference_image_url") @db.Text
+  leonardoImageId     String                             @map("leonardo_image_id") @db.Text
+  strengthType        String                             @map("strength_type") @db.VarChar(10)
+  modelId             String?                            @map("model_id") @db.Text
+  width               Int
+  height              Int
+  photoReal           Boolean                            @default(true) @map("photo_real")
+  alchemy             Boolean                            @default(true)
+  numberOfImages      Int                                @default(1) @map("number_of_images")
+  createdAt           DateTime                           @default(now()) @map("created_at")
+  updatedAt           DateTime                           @updatedAt @map("updated_at")
+
+  project                            Project                             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                               User                                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  characterConsistentGeneratedImages CharacterConsistentGeneratedImage[]
+
+  @@map("character_consistent_image_requests")
+}
+
+model CharacterConsistentGeneratedImage {
+  id                                Int                             @id @default(autoincrement())
+  characterConsistentImageRequestId Int                             @map("character_consistent_image_request_id")
+  imageUrl                          String                          @db.Text @map("image_url")
+  createdAt                         DateTime                        @default(now()) @map("created_at")
+  updatedAt                         DateTime                        @updatedAt @map("updated_at")
+
+  characterConsistentImageRequest CharacterConsistentImageRequest @relation(fields: [characterConsistentImageRequestId], references: [id], onDelete: Cascade)
+
+  @@map("character_consistent_generated_images")
+}
+
+model LeonardoModel {
+  id                 Int      @id @default(autoincrement())
+  name               String   @unique
+  modelId            String   @unique @map("model_id")
+  preprocessorId     Int      @map("preprocessor_id")
+  photoRealAvailable Boolean  @default(true) @map("photo_real_available")
+  photoRealDefault   Boolean  @default(true) @map("photo_real_default")
+  photoRealVersion   String   @default("v2") @map("photo_real_version")
+  alchemyAvailable   Boolean  @default(true) @map("alchemy_available")
+  alchemyDefault     Boolean  @default(true) @map("alchemy_default")
+  isActive           Boolean  @default(true) @map("is_active")
+  displayOrder       Int      @default(0) @map("display_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("leonardo_models")
 }
