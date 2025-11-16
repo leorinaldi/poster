@@ -954,7 +954,7 @@ export default function ToolsInterface({ tools, projects: initialProjects }: { t
                               }
                               setDimensions(`${request.width}x${request.height}`)
                               setPhotoReal(request.photoReal)
-                              setAlchemy(request.alchemy)
+                              // Alchemy is automatically tied to PhotoReal
                               setCharacterGeneratedImages(request.characterConsistentGeneratedImages || [])
                             }}
                             className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
