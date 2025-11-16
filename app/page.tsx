@@ -2,6 +2,7 @@ import { auth, signOut } from "@/auth"
 import { redirect } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
+import { prisma } from "@/lib/prisma"
 
 export default async function HomePage() {
   const session = await auth()
@@ -9,6 +10,11 @@ export default async function HomePage() {
   if (!session) {
     redirect("/login")
   }
+
+  // Check if user has any projects
+  const projectCount = await prisma.project.count({
+    where: { userId: session.user.id }
+  })
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -64,7 +70,7 @@ export default async function HomePage() {
             Welcome to Poster!
           </h2>
           <Link
-            href="/tools"
+            href={projectCount === 0 ? "/projects/new" : "/tools"}
             className="inline-block mt-6 px-6 py-3 text-lg font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
           >
             Next

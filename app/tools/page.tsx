@@ -17,6 +17,17 @@ export default async function ToolsPage() {
     orderBy: { name: 'asc' }
   })
 
+  // Fetch user's projects
+  const projects = await prisma.project.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  // If no projects, redirect to create project page
+  if (projects.length === 0) {
+    redirect("/projects/new")
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Top Header Bar */}
@@ -66,7 +77,7 @@ export default async function ToolsPage() {
 
       {/* Main Content with Sidebar */}
       <div className="flex-1 overflow-hidden">
-        <ToolsInterface tools={tools} />
+        <ToolsInterface tools={tools} projects={projects} />
       </div>
     </div>
   )
