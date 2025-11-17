@@ -142,6 +142,9 @@ model CharacterConsistentImageRequest {
   photoReal           Boolean                            @default(true) @map("photo_real")
   alchemy             Boolean                            @default(true)
   numberOfImages      Int                                @default(1) @map("number_of_images")
+  presetStyle         String?                            @map("preset_style") @db.VarChar(50)
+  styleUuid           String?                            @map("style_uuid") @db.VarChar(255)
+  contrast            Float?                             @map("contrast") @db.DoublePrecision
   createdAt           DateTime                           @default(now()) @map("created_at")
   updatedAt           DateTime                           @updatedAt @map("updated_at")
 
@@ -174,10 +177,26 @@ model LeonardoModel {
   photoRealVersion   String   @default("v2") @map("photo_real_version")
   alchemyAvailable   Boolean  @default(true) @map("alchemy_available")
   alchemyDefault     Boolean  @default(true) @map("alchemy_default")
+  styleControl       String   @default("presetStyle") @map("style_control") @db.VarChar(50)
+  contrastRequired   Boolean  @default(false) @map("contrast_required")
+  contrastDefault    Float?   @map("contrast_default") @db.DoublePrecision
   isActive           Boolean  @default(true) @map("is_active")
   displayOrder       Int      @default(0) @map("display_order")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   @@map("leonardo_models")
+}
+
+model LeonardoStyleControl {
+  id                 Int      @id @default(autoincrement())
+  styleControlParam  String   @map("style_control_param") @db.VarChar(50)
+  styleOption        String   @map("style_option") @db.VarChar(50)
+  styleUuid          String?  @map("style_uuid") @db.VarChar(255)
+  displayOrder       Int      @default(0) @map("display_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([styleControlParam, styleOption])
+  @@map("leonardo_style_controls")
 }

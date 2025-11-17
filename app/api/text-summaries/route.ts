@@ -77,7 +77,7 @@ export async function POST(req: Request) {
 
     const openai = getOpenAI()
     const nameResponse = await openai.chat.completions.create({
-      model: "grok-4-fast-non-reasoning",
+      model: "grok-4-fast-reasoning",
       messages: [
         {
           role: "system",
@@ -106,23 +106,35 @@ export async function POST(req: Request) {
     })
 
     // Build prompt for Grok AI
-    let prompt = `Please provide a summary with approximately ${targetWordCount} words.`
+    let prompt = ``
 
     if (website && textToSummarize) {
-      prompt += `\n\nWebsite to review: ${website}\n\nAdditional text to consider:\n${textToSummarize}`
+      prompt = `Use web search to access and read the content from this website: ${website}
+
+After reading the website content, also consider this additional text:
+${textToSummarize}
+
+Create a comprehensive summary that incorporates insights from both the website and the additional text. Target approximately ${targetWordCount} words.`
     } else if (website) {
-      prompt += `\n\nPlease visit and summarize the content from this website: ${website}`
+      prompt = `Use web search to access and read the full content from this website: ${website}
+
+Create a detailed summary of the website's content. Target approximately ${targetWordCount} words.`
     } else {
-      prompt += `\n\nPlease summarize the following text:\n${textToSummarize}`
+      prompt = `Please summarize the following text in approximately ${targetWordCount} words:
+
+${textToSummarize}`
     }
+
+    // Determine search mode: 'on' if website provided, 'auto' otherwise
+    const searchMode = website ? 'on' : 'auto'
 
     // Call Grok AI to generate summary
     const response = await openai.chat.completions.create({
-      model: "grok-4-fast-non-reasoning",
+      model: "grok-4-fast-reasoning",
       messages: [
         {
           role: "system",
-          content: "You are a helpful AI assistant that creates concise, accurate summaries. When given a website URL, use web search to access and summarize its content. Always aim for the target word count specified by the user."
+          content: "You are a helpful AI assistant that creates concise, accurate summaries. When given a website URL, you MUST use web search to access and read the actual content from that website before summarizing. Do not make assumptions or invent any material - only summarize the information actually provided or found through web search. Stick strictly to the content available. Aim for the target word count specified by the user."
         },
         {
           role: "user",
@@ -131,7 +143,7 @@ export async function POST(req: Request) {
       ],
       stream: false,
       search_parameters: {
-        mode: 'auto',
+        mode: searchMode,
         returnCitations: true,
         sources: [{ type: 'web' }]
       }

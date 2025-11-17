@@ -6,6 +6,18 @@ A Next.js application for AI-powered content creation including text summarizati
 
 Poster is a web application that allows users to organize and generate AI-powered content. Users can create multiple projects, and within each project, use various AI tools for text summarization and image generation using Grok AI and Leonardo.ai.
 
+## Recent Updates
+
+**Phoenix Model Support (November 2024)**
+- Added Leonardo Phoenix model with enhanced architecture
+- Implemented 24 style UUID options for Phoenix (3D Render, Bokeh, Cinematic, etc.)
+- Added adjustable contrast parameter (0-10) for Phoenix generations
+- Conditional UI: PhotoReal/Preset Styles for SDXL, Style UUID/Contrast for Phoenix
+- Renamed "Strength Type" to "Level of Consistency" for clarity
+- Changed default consistency from Mid to High
+- Added Number of Images option (1-4 per generation)
+- Database-driven style controls for easy expansion
+
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
@@ -65,11 +77,15 @@ Poster is a web application that allows users to organize and generate AI-powere
   - Leonardo Kino XL
   - Leonardo Vision XL
   - Leonardo Anime XL
+  - Leonardo Phoenix (newer architecture with enhanced controls)
 - Customizable settings:
   - Prompt for image generation
-  - Strength type (Low/Mid/High) for character resemblance
+  - Level of Consistency (Low/Mid/High) - defaults to High
+  - Number of images per generation (1-4)
   - Multiple dimension options (512x512 to 1024x1024)
-  - PhotoReal enhancement (includes Alchemy)
+  - Style controls (model-dependent):
+    - SDXL models: PhotoReal enhancement + Preset Styles (Cinematic, Creative, Portrait, etc.)
+    - Phoenix model: Style UUID selection + Contrast adjustment
 - Auto-generated descriptive titles
 - Generation history with reference image preview
 - Edit and regenerate with same or new reference image
@@ -137,10 +153,13 @@ Poster is a web application that allows users to organize and generate AI-powere
 - Text prompt
 - Reference image URL (Vercel Blob)
 - Leonardo image ID
-- Strength type (Low/Mid/High)
+- Strength type/Level of Consistency (Low/Mid/High)
 - Model ID (references leonardo_models table)
 - Dimensions (width/height)
-- PhotoReal and Alchemy settings
+- Number of images (1-4)
+- PhotoReal and Alchemy settings (SDXL models only)
+- Preset style (SDXL models)
+- Style UUID and Contrast (Phoenix model)
 - Generated images (one-to-many relationship)
 - Created/updated timestamps
 
@@ -149,8 +168,17 @@ Poster is a web application that allows users to organize and generate AI-powere
 - Model name and ID
 - Preprocessor ID for ControlNets
 - PhotoReal and Alchemy compatibility settings
+- Style control type (presetStyle or styleUUID)
+- Contrast requirements (Phoenix model)
 - Active status and display order
 - Easy to add new models without code changes
+
+### Leonardo Style Controls
+- Database-driven style options
+- Style control parameter (presetStyle or styleUUID)
+- Style option label and UUID
+- Display order
+- Supports both SDXL preset styles and Phoenix style UUIDs
 
 ### Generated Images
 - Associated with image generation requests
@@ -205,7 +233,7 @@ npx prisma generate
 # Run database migrations
 npx prisma migrate deploy
 
-# Seed initial tools and Leonardo models
+# Seed initial tools, Leonardo models, and style controls
 npx prisma db seed
 
 # Start development server
@@ -237,7 +265,8 @@ poster/
 │   │   ├── text-summaries/            # Summary CRUD
 │   │   ├── image-generations/         # Image generation CRUD
 │   │   ├── character-consistent-generations/ # Character imaging CRUD
-│   │   └── leonardo-models/           # Model configuration API
+│   │   ├── leonardo-models/           # Model configuration API
+│   │   └── leonardo-style-controls/   # Style controls API (presetStyle/styleUUID)
 │   ├── components/                    # Shared React components
 │   │   ├── manage-projects.tsx        # Project management UI
 │   │   └── DeleteConfirmModal.tsx     # Reusable delete confirmation
@@ -315,12 +344,18 @@ Tool pages:
 ### Character-Consistent Imaging
 - Upload reference images for character consistency
 - Reference images stored permanently in Vercel Blob
-- Leonardo.ai Character Reference ControlNet (preprocessor 133)
+- Leonardo.ai Character Reference ControlNet (model-specific preprocessors)
 - Database-driven model selection:
-  - Each model has specific configuration (preprocessorId, photoRealVersion, etc.)
+  - SDXL models (preprocessor 133): Lightning XL, Kino XL, Vision XL, Anime XL
+  - Phoenix model (preprocessor 397): Enhanced architecture with style controls
+  - Each model has specific configuration (preprocessorId, photoRealVersion, styleControl, etc.)
   - Easy to add new models via database without code changes
-- PhotoReal v2 enhancement with Alchemy
-- Configurable character resemblance strength
+- Advanced style controls:
+  - SDXL models: PhotoReal v2 enhancement + 9 preset styles (Cinematic, Creative, Portrait, etc.)
+  - Phoenix model: 24 style UUID options + adjustable contrast (0-10)
+- Configurable level of consistency (Low/Mid/High) - defaults to High
+- Generate 1-4 images per request
+- Multiple dimension options (512x512 to 1024x1024)
 - 30-60 second generation time
 - Automatic polling and status updates
 
@@ -359,9 +394,15 @@ Tool pages:
   - Preprocessor ID for ControlNets
   - PhotoReal compatibility and version
   - Alchemy compatibility
-  - Display order
-- API routes dynamically fetch model configuration
-- Frontend populates dropdown from database
+  - Style control type (presetStyle or styleUUID)
+  - Contrast requirements and defaults
+  - Active status and display order
+- Style controls stored in `leonardo_style_controls` table
+- Two types of style controls:
+  - presetStyle: SDXL models (9 options like CINEMATIC, PORTRAIT, ANIME)
+  - styleUUID: Phoenix model (24 options with unique UUIDs)
+- API routes dynamically fetch model and style configuration
+- Frontend adapts UI based on selected model's capabilities
 
 ## Security
 
@@ -402,9 +443,11 @@ Potential features for future development:
 - Custom AI model parameters
 - Batch processing
 - Content comparison tools
-- Additional Leonardo.ai models (Phoenix, Diffusion, etc.)
+- Additional Leonardo.ai models (Diffusion XL, Diffusion 1.5, etc.)
 - Image upscaling and refinement
-- Style transfer and variations
+- Additional style transfer and variations
+- Image-to-image transformations
+- Motion/video generation capabilities
 
 ## License
 

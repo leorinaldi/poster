@@ -23,7 +23,18 @@ type LeonardoModel = {
   photoRealVersion: string
   alchemyAvailable: boolean
   alchemyDefault: boolean
+  styleControl: string
+  contrastRequired: boolean
+  contrastDefault: number | null
   isActive: boolean
+  displayOrder: number
+}
+
+type LeonardoStyleControl = {
+  id: number
+  styleControlParam: string
+  styleOption: string
+  styleUuid: string | null
   displayOrder: number
 }
 
@@ -42,6 +53,9 @@ type CharacterConsistentImageRequest = {
   photoReal: boolean
   alchemy: boolean
   numberOfImages: number
+  presetStyle: string | null
+  styleUuid: string | null
+  contrast: number | null
   createdAt: Date
   updatedAt: Date
   characterConsistentGeneratedImages: CharacterConsistentGeneratedImage[]
@@ -55,11 +69,16 @@ export default function CharacterConsistentImagePage() {
   const [characterPrompt, setCharacterPrompt] = useState("")
   const [referenceImage, setReferenceImage] = useState<File | null>(null)
   const [referenceImagePreview, setReferenceImagePreview] = useState<string | null>(null)
-  const [strengthType, setStrengthType] = useState("Mid")
+  const [strengthType, setStrengthType] = useState("High")
   const [leonardoModels, setLeonardoModels] = useState<LeonardoModel[]>([])
   const [selectedModel, setSelectedModel] = useState<LeonardoModel | null>(null)
   const [dimensions, setDimensions] = useState("1024x1024")
+  const [numberOfImages, setNumberOfImages] = useState(1)
   const [photoReal, setPhotoReal] = useState(true)
+  const [presetStyle, setPresetStyle] = useState("")
+  const [styleUuid, setStyleUuid] = useState("")
+  const [contrast, setContrast] = useState(3.0)
+  const [styleControls, setStyleControls] = useState<LeonardoStyleControl[]>([])
   const [characterGeneratedImages, setCharacterGeneratedImages] = useState<CharacterConsistentGeneratedImage[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(0)
@@ -92,6 +111,44 @@ export default function CharacterConsistentImagePage() {
     fetchLeonardoModels()
   }, [])
 
+  // Fetch style controls when selected model changes
+  useEffect(() => {
+    const fetchStyleControls = async () => {
+      if (!selectedModel) return
+
+      try {
+        const response = await fetch(`/api/leonardo-style-controls?styleControlParam=${selectedModel.styleControl}`)
+        if (response.ok) {
+          const controls = await response.json()
+          setStyleControls(controls)
+          // Set default style based on styleControl type
+          if (controls.length > 0) {
+            if (selectedModel.styleControl === 'styleUUID') {
+              // For Phoenix: set styleUuid to the UUID value
+              setStyleUuid(controls[0].styleUuid || '')
+            } else {
+              // For SDXL models: set presetStyle
+              setPresetStyle(controls[0].styleOption)
+            }
+          }
+        }
+
+        // Set contrast default if model requires contrast
+        if (selectedModel.contrastRequired && selectedModel.contrastDefault) {
+          setContrast(selectedModel.contrastDefault)
+        }
+
+        // Disable photoReal for models that don't support it
+        if (!selectedModel.photoRealAvailable) {
+          setPhotoReal(false)
+        }
+      } catch (error) {
+        console.error('Failed to fetch style controls:', error)
+      }
+    }
+    fetchStyleControls()
+  }, [selectedModel])
+
   // Fetch character consistent requests for the selected project
   const fetchCharacterRequests = useCallback(async () => {
     if (!selectedProject) return
@@ -115,13 +172,15 @@ export default function CharacterConsistentImagePage() {
     setCharacterPrompt("")
     setReferenceImage(null)
     setReferenceImagePreview(null)
-    setStrengthType("Mid")
+    setStrengthType("High")
     const defaultModel = leonardoModels.find(m => m.displayOrder === 1)
     if (defaultModel) {
       setSelectedModel(defaultModel)
       setPhotoReal(defaultModel.photoRealDefault)
     }
     setDimensions("1024x1024")
+    setNumberOfImages(1)
+    setPresetStyle(styleControls[0]?.styleOption || "")
     setCharacterGeneratedImages([])
     setFileInputKey(prev => prev + 1)
   }, [fetchCharacterRequests, leonardoModels])
@@ -140,13 +199,15 @@ export default function CharacterConsistentImagePage() {
               setCharacterPrompt("")
               setReferenceImage(null)
               setReferenceImagePreview(null)
-              setStrengthType("Mid")
+              setStrengthType("High")
               const defaultModel = leonardoModels.find(m => m.displayOrder === 1)
               if (defaultModel) {
                 setSelectedModel(defaultModel)
                 setPhotoReal(defaultModel.photoRealDefault)
               }
               setDimensions("1024x1024")
+              setNumberOfImages(1)
+              setPresetStyle(styleControls[0]?.styleOption || "")
               setCharacterGeneratedImages([])
               setFileInputKey(prev => prev + 1)
             }}
@@ -178,7 +239,11 @@ export default function CharacterConsistentImagePage() {
                         setSelectedModel(model)
                       }
                       setDimensions(`${request.width}x${request.height}`)
+                      setNumberOfImages(request.numberOfImages)
                       setPhotoReal(request.photoReal)
+                      setPresetStyle(request.presetStyle || "")
+                      setStyleUuid(request.styleUuid || "")
+                      setContrast(request.contrast || 3.0)
                       setCharacterGeneratedImages(request.characterConsistentGeneratedImages || [])
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors ${
@@ -288,8 +353,27 @@ export default function CharacterConsistentImagePage() {
       formData.append("modelId", selectedModel?.modelId || "")
       formData.append("width", width.toString())
       formData.append("height", height.toString())
+      formData.append("numberOfImages", numberOfImages.toString())
       formData.append("photoReal", photoReal.toString())
-      formData.append("alchemy", photoReal.toString()) // Alchemy is tied to PhotoReal
+
+      // For Phoenix models, alchemy is always true; for SDXL models, it's tied to PhotoReal
+      const alchemyValue = selectedModel?.alchemyDefault || photoReal
+      formData.append("alchemy", alchemyValue.toString())
+
+      // Add presetStyle if selected and model uses presetStyle
+      if (presetStyle && selectedModel?.styleControl === "presetStyle") {
+        formData.append("presetStyle", presetStyle)
+      }
+
+      // Add styleUuid if selected and model uses styleUUID
+      if (styleUuid && selectedModel?.styleControl === "styleUUID") {
+        formData.append("styleUuid", styleUuid)
+      }
+
+      // Add contrast if model requires it
+      if (selectedModel?.contrastRequired) {
+        formData.append("contrast", contrast.toString())
+      }
 
       if (referenceImage) {
         formData.append("referenceImage", referenceImage)
@@ -351,7 +435,7 @@ export default function CharacterConsistentImagePage() {
           setCharacterPrompt("")
           setReferenceImage(null)
           setReferenceImagePreview(null)
-          setStrengthType("Mid")
+          setStrengthType("High")
           // Reset to default model
           const defaultModel = leonardoModels.find(m => m.displayOrder === 1)
           if (defaultModel) {
@@ -359,6 +443,7 @@ export default function CharacterConsistentImagePage() {
             setPhotoReal(defaultModel.photoRealDefault)
           }
           setDimensions("1024x1024")
+          setNumberOfImages(1)
           setCharacterGeneratedImages([])
           setFileInputKey(prev => prev + 1)
         }
@@ -433,10 +518,10 @@ export default function CharacterConsistentImagePage() {
             />
           </div>
 
-          {/* Strength Type */}
+          {/* Level of Consistency */}
           <div>
             <label htmlFor="strengthType" className="block text-sm font-semibold text-gray-700 mb-2">
-              Strength Type
+              Level of Consistency
             </label>
             <select
               id="strengthType"
@@ -477,6 +562,77 @@ export default function CharacterConsistentImagePage() {
             </select>
           </div>
 
+          {/* Style Type - show for both presetStyle and styleUUID */}
+          {styleControls.length > 0 && (
+              <div>
+                <label htmlFor="styleType" className="block text-sm font-semibold text-gray-700 mb-2">
+                  Style Type
+                </label>
+                <select
+                  id="styleType"
+                  value={selectedModel?.styleControl === 'styleUUID' ? styleUuid : presetStyle}
+                  onChange={(e) => {
+                    if (selectedModel?.styleControl === 'styleUUID') {
+                      setStyleUuid(e.target.value)
+                    } else {
+                      setPresetStyle(e.target.value)
+                    }
+                  }}
+                  disabled={isSubmitting}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+                >
+                  {styleControls.map((control) => (
+                    <option
+                      key={control.id}
+                      value={selectedModel?.styleControl === 'styleUUID' ? control.styleUuid || '' : control.styleOption}
+                    >
+                      {control.styleOption}
+                    </option>
+                  ))}
+                </select>
+              </div>
+          )}
+
+          {/* PhotoReal Toggle - only show if model supports it */}
+          {selectedModel?.photoRealAvailable && (
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="photoReal"
+                checked={photoReal}
+                onChange={(e) => setPhotoReal(e.target.checked)}
+                disabled={isSubmitting}
+                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
+              />
+              <label htmlFor="photoReal" className="ml-2 block text-sm text-gray-700">
+                PhotoReal (Enhanced photorealism with Alchemy)
+              </label>
+            </div>
+          )}
+
+          {/* Contrast - only show if model requires contrast */}
+          {selectedModel?.contrastRequired && (
+            <div>
+              <label htmlFor="contrast" className="block text-sm font-semibold text-gray-700 mb-2">
+                Contrast
+              </label>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  id="contrast"
+                  min="1.0"
+                  max="4.5"
+                  step="0.1"
+                  value={contrast}
+                  onChange={(e) => setContrast(parseFloat(e.target.value))}
+                  disabled={isSubmitting}
+                  className="flex-1"
+                />
+                <span className="text-sm text-gray-600 min-w-[3rem]">{contrast.toFixed(1)}</span>
+              </div>
+            </div>
+          )}
+
           {/* Dimensions */}
           <div>
             <label htmlFor="dimensions" className="block text-sm font-semibold text-gray-700 mb-2">
@@ -498,26 +654,26 @@ export default function CharacterConsistentImagePage() {
             </select>
           </div>
 
-          {/* PhotoReal Toggle */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="photoReal"
-              checked={photoReal}
-              onChange={(e) => setPhotoReal(e.target.checked)}
-              disabled={isSubmitting}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded disabled:opacity-50"
-            />
-            <label htmlFor="photoReal" className="ml-2 block text-sm text-gray-700">
-              PhotoReal (Enhanced photorealism with Alchemy)
+          {/* Number of Images */}
+          <div>
+            <label htmlFor="numberOfImages" className="block text-sm font-semibold text-gray-700 mb-2">
+              Number of Images
             </label>
+            <select
+              id="numberOfImages"
+              value={numberOfImages}
+              onChange={(e) => setNumberOfImages(parseInt(e.target.value))}
+              disabled={isSubmitting}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
+            >
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
           </div>
 
           <div className="text-sm text-gray-600">
-            * Reference image is required for new generations
-            <br />
-            * Prompt is required
-            <br />
             * Generation may take 30-60 seconds
           </div>
 

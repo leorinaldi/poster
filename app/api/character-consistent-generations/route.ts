@@ -102,8 +102,12 @@ export async function POST(req: Request) {
     const modelId = formData.get("modelId") as string | null
     const width = parseInt(formData.get("width") as string)
     const height = parseInt(formData.get("height") as string)
+    const numberOfImages = parseInt(formData.get("numberOfImages") as string) || 1
     const photoReal = formData.get("photoReal") === "true"
     const alchemy = formData.get("alchemy") === "true"
+    const presetStyle = formData.get("presetStyle") as string | null
+    const styleUuid = formData.get("styleUuid") as string | null
+    const contrast = formData.get("contrast") ? parseFloat(formData.get("contrast") as string) : null
     const referenceImage = formData.get("referenceImage") as File
 
     // Validation
@@ -243,21 +247,23 @@ export async function POST(req: Request) {
         width: width,
         height: height,
         photoReal: photoReal,
-        alchemy: photoReal, // Alchemy must match PhotoReal (API requirement)
-        numberOfImages: 1,
+        alchemy: alchemy,
+        numberOfImages: numberOfImages,
+        presetStyle: presetStyle || null,
+        styleUuid: styleUuid || null,
+        contrast: contrast,
       },
     })
 
     // Step 6: Generate images with Leonardo using Character Reference
-    // Build the request body conditionally
+    // Build the request body conditionally based on model type
     const requestBody: any = {
       height: height,
       width: width,
       modelId: leonardoModel.modelId,
       prompt: prompt,
-      photoReal: photoReal,
-      alchemy: photoReal, // Alchemy must match PhotoReal (API requirement)
-      num_images: 1,
+      alchemy: alchemy,
+      num_images: numberOfImages,
       controlnets: [
         {
           initImageId: leonardoImageId,
@@ -268,9 +274,25 @@ export async function POST(req: Request) {
       ],
     }
 
-    // Only include photoRealVersion when photoReal is true
-    if (photoReal) {
-      requestBody.photoRealVersion = leonardoModel.photoRealVersion
+    // Phoenix model uses styleUUID and contrast (no PhotoReal support)
+    if (leonardoModel.styleControl === "styleUUID") {
+      if (styleUuid) {
+        requestBody.styleUUID = styleUuid
+      }
+      if (contrast !== null) {
+        requestBody.contrast = contrast
+      }
+    } else {
+      // SDXL models use PhotoReal and presetStyle
+      requestBody.photoReal = photoReal
+
+      if (photoReal) {
+        requestBody.photoRealVersion = leonardoModel.photoRealVersion
+      }
+
+      if (presetStyle) {
+        requestBody.presetStyle = presetStyle
+      }
     }
 
     const generationResponse = await fetch(
